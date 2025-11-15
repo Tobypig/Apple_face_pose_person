@@ -33,16 +33,19 @@ class BibNumberDetector {
 
     private let poseManager: PoseEstimationManager
     private let torsoManager: TorsoRegionManager
+    private let scalingManager: SmartScalingManager
 
     // Configuration
     var minTextConfidence: Float = 0.5
     var preferredZones: [TorsoZone] = [.upperChest, .midTorso, .lowerTorso]
+    var enableSmartScaling: Bool = true  // NEW: Enable smart scaling for better OCR
 
     // MARK: - Initialization
 
     init() {
         self.poseManager = PoseEstimationManager()
         self.torsoManager = TorsoRegionManager()
+        self.scalingManager = SmartScalingManager()  // NEW: Smart scaling support
     }
 
     // MARK: - Detection Methods
@@ -74,9 +77,22 @@ class BibNumberDetector {
             for region in bibRegions {
                 print("  Searching in \(region.zone) region...")
 
-                if let croppedImage = TorsoRegionManager.cropToBibRegion(image: image, region: region) {
-                    // Step 4: Perform OCR on the region
-                    if let detectedNumbers = try? recognizeNumbers(in: croppedImage) {
+                // NEW: Apply smart scaling for better OCR
+                let processedImage: CGImage?
+                if enableSmartScaling {
+                    processedImage = scalingManager.scaleForOCR(image: image, region: region)
+                    if processedImage != nil {
+                        let imageSize = CGSize(width: image.width, height: image.height)
+                        let metrics = scalingManager.analyzeRegionQuality(region: region, imageSize: imageSize)
+                        print("    Scaled \(String(format: "%.1fx", metrics.recommendedScale)) (\(metrics.distanceCategory))")
+                    }
+                } else {
+                    processedImage = TorsoRegionManager.cropToBibRegion(image: image, region: region)
+                }
+
+                if let finalImage = processedImage {
+                    // Step 4: Perform OCR on the scaled/cropped region
+                    if let detectedNumbers = try? recognizeNumbers(in: finalImage) {
                         for (number, confidence) in detectedNumbers {
                             print("    ✓ Found number: \(number) (confidence: \(confidence))")
 
@@ -109,17 +125,26 @@ class BibNumberDetector {
 
         for pose in poses {
             // Only check primary bib region
-            if let region = torsoManager.getPrimaryBibRegion(from: pose),
-               let croppedImage = TorsoRegionManager.cropToBibRegion(image: image, region: region),
-               let detectedNumbers = try? recognizeNumbers(in: croppedImage) {
+            if let region = torsoManager.getPrimaryBibRegion(from: pose) {
+                // NEW: Apply smart scaling for better OCR
+                let processedImage: CGImage?
+                if enableSmartScaling {
+                    processedImage = scalingManager.scaleForOCR(image: image, region: region)
+                } else {
+                    processedImage = TorsoRegionManager.cropToBibRegion(image: image, region: region)
+                }
 
-                for (number, confidence) in detectedNumbers {
-                    results.append(BibNumberResult(
-                        number: number,
-                        confidence: confidence,
-                        region: region,
-                        personID: pose.personID
-                    ))
+                if let finalImage = processedImage,
+                   let detectedNumbers = try? recognizeNumbers(in: finalImage) {
+
+                    for (number, confidence) in detectedNumbers {
+                        results.append(BibNumberResult(
+                            number: number,
+                            confidence: confidence,
+                            region: region,
+                            personID: pose.personID
+                        ))
+                    }
                 }
             }
         }

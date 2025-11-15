@@ -39,6 +39,11 @@ A comprehensive implementation using Apple's Vision framework for:
 - **Multi-strategy detection** for different bib placements
 - **Support for various race types** (marathon, triathlon, cycling, trail)
 - Real-world scenario handling (bibs placed at different heights)
+- **Smart scaling system** for optimal OCR at any distance (NEW!)
+  - Automatic distance detection (very close → very far)
+  - Intelligent upscaling for far subjects (up to 6x)
+  - Image enhancement (sharpening, contrast)
+  - 4 scaling modes: aspect fit, aspect fill, scale to fill, intelligent
 
 ## Requirements
 
@@ -60,9 +65,12 @@ See the example implementations in:
 
 **Bib Number Detection:**
 - `TorsoRegionDetection.swift` - Torso region & bib zone detection
-- `BibNumberDetectionExample.swift` - Complete bib detection examples
+- `BibNumberDetectionExample.swift` - Complete bib detection examples (with smart scaling)
 - `TorsoVisualization.swift` - Visualization utilities
+- `SmartScalingSystem.swift` - Smart scaling for OCR optimization (NEW!)
+- `SmartScalingExamples.swift` - Smart scaling usage examples (NEW!)
 - `BIB_NUMBER_DETECTION_GUIDE.md` - Comprehensive guide with diagrams
+- `SMART_SCALING_GUIDE.md` - Smart scaling system documentation (NEW!)
 
 **Examples & Testing:**
 - `Example.swift` - Basic usage examples
