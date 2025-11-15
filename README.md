@@ -5,6 +5,7 @@ A comprehensive implementation using Apple's Vision framework for:
 - **Face Recognition** - Recognize facial features and landmarks
 - **Pose Estimation** - Detect human body poses with key points
 - **Person Detection** - Detect people in images and video
+- **Bib Number Detection** - Detect and read race bib numbers (NEW!)
 
 ## Features
 
@@ -32,6 +33,13 @@ A comprehensive implementation using Apple's Vision framework for:
 - Bounding box coordinates
 - Confidence scores
 
+### Bib Number Detection
+- **Torso region detection** with 3 zones (upper chest, mid torso, lower torso)
+- **Race bib number OCR** using Vision text recognition
+- **Multi-strategy detection** for different bib placements
+- **Support for various race types** (marathon, triathlon, cycling, trail)
+- Real-world scenario handling (bibs placed at different heights)
+
 ## Requirements
 
 - iOS 14.0+ / macOS 11.0+
@@ -42,12 +50,28 @@ A comprehensive implementation using Apple's Vision framework for:
 ## Usage
 
 See the example implementations in:
+
+**Core Detection:**
 - `FaceDetection.swift` - Face detection implementation
 - `FaceRecognition.swift` - Face landmarks and recognition
 - `PoseEstimation.swift` - Human pose estimation
 - `PersonDetection.swift` - Person/human detection
 - `VisionCoordinator.swift` - Integrated coordinator
-- `Example.swift` - Usage examples
+
+**Bib Number Detection:**
+- `TorsoRegionDetection.swift` - Torso region & bib zone detection
+- `BibNumberDetectionExample.swift` - Complete bib detection examples
+- `TorsoVisualization.swift` - Visualization utilities
+- `BIB_NUMBER_DETECTION_GUIDE.md` - Comprehensive guide with diagrams
+
+**Examples & Testing:**
+- `Example.swift` - Basic usage examples
+- `VisionFrameworkTests.swift` - Comprehensive test suite (32 tests)
+- `run_tests.sh` - Automated test runner
+
+**Documentation:**
+- `PIPELINE_FLOWCHART.md` - Complete processing pipeline explanation
+- `BIB_NUMBER_DETECTION_GUIDE.md` - Bib detection guide with real-world scenarios
 
 ## Implementation Notes
 
