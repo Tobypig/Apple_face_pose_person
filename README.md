@@ -39,11 +39,25 @@ A comprehensive implementation using Apple's Vision framework for:
 - **Multi-strategy detection** for different bib placements
 - **Support for various race types** (marathon, triathlon, cycling, trail)
 - Real-world scenario handling (bibs placed at different heights)
-- **Smart scaling system** for optimal OCR at any distance (NEW!)
+- **Smart scaling system** for optimal OCR at any distance
   - Automatic distance detection (very close → very far)
   - Intelligent upscaling for far subjects (up to 6x)
   - Image enhancement (sharpening, contrast)
   - 4 scaling modes: aspect fit, aspect fill, scale to fill, intelligent
+
+### Comprehensive Visualization (NEW!)
+- **Person bounding boxes** with customizable colors and line widths
+- **Pose skeleton rendering** with joints (19 points) and bone connections
+- **Torso region visualization** with zone-specific styling
+- **Bib number highlighting** with prominent display
+- **Readable text rendering** with:
+  - Semi-transparent background boxes
+  - Text outlines for maximum contrast (3-4px)
+  - Customizable font size and weight
+  - Background padding for clarity
+- **Layered rendering system** (person boxes → torso → pose → bib numbers)
+- **9 comprehensive examples** covering all use cases
+- Platform-optimized text rendering (macOS/iOS)
 
 ## Requirements
 
@@ -67,14 +81,24 @@ See the example implementations in:
 - `TorsoRegionDetection.swift` - Torso region & bib zone detection
 - `BibNumberDetectionExample.swift` - Complete bib detection examples (with smart scaling)
 - `TorsoVisualization.swift` - Visualization utilities
-- `SmartScalingSystem.swift` - Smart scaling for OCR optimization (NEW!)
-- `SmartScalingExamples.swift` - Smart scaling usage examples (NEW!)
+- `SmartScalingSystem.swift` - Smart scaling for OCR optimization
+- `SmartScalingExamples.swift` - Smart scaling usage examples
 - `BIB_NUMBER_DETECTION_GUIDE.md` - Comprehensive guide with diagrams
-- `SMART_SCALING_GUIDE.md` - Smart scaling system documentation (NEW!)
+- `SMART_SCALING_GUIDE.md` - Smart scaling system documentation
+
+**Comprehensive Visualization (NEW!):**
+- `ComprehensiveVisualization.swift` - Complete visualization system with readable text rendering
+- `VisualizationExamples.swift` - 9 visualization usage examples
+  - Person bounding boxes (customizable colors & line widths)
+  - Pose skeletons (joints & bones with confidence scores)
+  - Torso regions (multiple zone visualization)
+  - Bib number highlighting
+  - Layered visualization rendering
+  - Readable text with background boxes & outlines for maximum contrast
 
 **Examples & Testing:**
 - `Example.swift` - Basic usage examples
-- `VisionFrameworkTests.swift` - Comprehensive test suite (32 tests)
+- `VisionFrameworkTests.swift` - Comprehensive test suite (49 tests)
 - `run_tests.sh` - Automated test runner
 
 **Documentation:**
