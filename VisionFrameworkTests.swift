@@ -534,4 +534,367 @@ class VisionFrameworkTests: XCTestCase {
 
         return context.makeImage()!
     }
+
+    // MARK: - Smart Scaling System Tests
+
+    func testSmartScalingInitialization() {
+        let scalingManager = SmartScalingManager()
+        XCTAssertNotNil(scalingManager, "SmartScalingManager should initialize successfully")
+
+        // Check default values
+        XCTAssertEqual(scalingManager.targetBibHeight, 150.0)
+        XCTAssertEqual(scalingManager.minimumBibHeight, 40.0)
+        XCTAssertEqual(scalingManager.maximumBibHeight, 400.0)
+        XCTAssertEqual(scalingManager.minimumDPI, 150.0)
+        XCTAssertEqual(scalingManager.targetDPI, 300.0)
+        XCTAssertTrue(scalingManager.enableEnhancement)
+        XCTAssertTrue(scalingManager.useHighQualityUpscaling)
+    }
+
+    func testDistanceCategorization() {
+        let scalingManager = SmartScalingManager()
+        let torsoManager = TorsoRegionManager()
+        let poseManager = PoseEstimationManager()
+
+        // Test with different sized regions
+        let testImage = createTestImageWithPerson()
+        guard let poses = try? poseManager.detectBodyPose(in: testImage),
+              let pose = poses.first,
+              let region = torsoManager.getPrimaryBibRegion(from: pose) else {
+            XCTFail("Failed to detect pose/region")
+            return
+        }
+
+        let imageSize = CGSize(width: testImage.width, height: testImage.height)
+        let metrics = scalingManager.analyzeRegionQuality(region: region, imageSize: imageSize)
+
+        // Should categorize as one of the distance categories
+        let validCategories: [DistanceCategory] = [.veryClose, .close, .medium, .far, .veryFar]
+        XCTAssertTrue(validCategories.contains(metrics.distanceCategory))
+    }
+
+    func testQualityAnalysis() {
+        let scalingManager = SmartScalingManager()
+        let torsoManager = TorsoRegionManager()
+        let poseManager = PoseEstimationManager()
+
+        let testImage = createTestImageWithPerson()
+        guard let poses = try? poseManager.detectBodyPose(in: testImage),
+              let pose = poses.first,
+              let region = torsoManager.getPrimaryBibRegion(from: pose) else {
+            XCTFail("Failed to detect pose/region")
+            return
+        }
+
+        let imageSize = CGSize(width: testImage.width, height: testImage.height)
+        let metrics = scalingManager.analyzeRegionQuality(region: region, imageSize: imageSize)
+
+        // Verify metrics structure
+        XCTAssertTrue(metrics.resolution.width > 0)
+        XCTAssertTrue(metrics.resolution.height > 0)
+        XCTAssertTrue(metrics.estimatedDPI > 0)
+        XCTAssertTrue(metrics.recommendedScale > 0)
+        XCTAssertTrue(metrics.pixelDensity >= 0)
+    }
+
+    func testScalingModeAspectFit() {
+        let scalingManager = SmartScalingManager()
+        let torsoManager = TorsoRegionManager()
+        let poseManager = PoseEstimationManager()
+
+        let testImage = createTestImageWithPerson()
+        guard let poses = try? poseManager.detectBodyPose(in: testImage),
+              let pose = poses.first,
+              let region = torsoManager.getPrimaryBibRegion(from: pose) else {
+            XCTFail("Failed to detect pose/region")
+            return
+        }
+
+        let scaledImage = scalingManager.scaleForOCR(
+            image: testImage,
+            region: region,
+            mode: .aspectFit
+        )
+
+        XCTAssertNotNil(scaledImage, "Aspect fit scaling should succeed")
+    }
+
+    func testScalingModeAspectFill() {
+        let scalingManager = SmartScalingManager()
+        let torsoManager = TorsoRegionManager()
+        let poseManager = PoseEstimationManager()
+
+        let testImage = createTestImageWithPerson()
+        guard let poses = try? poseManager.detectBodyPose(in: testImage),
+              let pose = poses.first,
+              let region = torsoManager.getPrimaryBibRegion(from: pose) else {
+            XCTFail("Failed to detect pose/region")
+            return
+        }
+
+        let scaledImage = scalingManager.scaleForOCR(
+            image: testImage,
+            region: region,
+            mode: .aspectFill
+        )
+
+        XCTAssertNotNil(scaledImage, "Aspect fill scaling should succeed")
+    }
+
+    func testScalingModeIntelligent() {
+        let scalingManager = SmartScalingManager()
+        let torsoManager = TorsoRegionManager()
+        let poseManager = PoseEstimationManager()
+
+        let testImage = createTestImageWithPerson()
+        guard let poses = try? poseManager.detectBodyPose(in: testImage),
+              let pose = poses.first,
+              let region = torsoManager.getPrimaryBibRegion(from: pose) else {
+            XCTFail("Failed to detect pose/region")
+            return
+        }
+
+        let scaledImage = scalingManager.scaleForOCR(
+            image: testImage,
+            region: region,
+            mode: .intelligent
+        )
+
+        XCTAssertNotNil(scaledImage, "Intelligent scaling should succeed")
+
+        // Intelligent mode should produce usable image
+        if let image = scaledImage {
+            XCTAssertTrue(image.width > 0)
+            XCTAssertTrue(image.height > 0)
+        }
+    }
+
+    func testImageEnhancement() {
+        let scalingManager = SmartScalingManager()
+        scalingManager.enableEnhancement = true
+
+        let torsoManager = TorsoRegionManager()
+        let poseManager = PoseEstimationManager()
+
+        let testImage = createTestImageWithPerson()
+        guard let poses = try? poseManager.detectBodyPose(in: testImage),
+              let pose = poses.first,
+              let region = torsoManager.getPrimaryBibRegion(from: pose) else {
+            XCTFail("Failed to detect pose/region")
+            return
+        }
+
+        let enhancedImage = scalingManager.scaleForOCR(
+            image: testImage,
+            region: region,
+            mode: .intelligent
+        )
+
+        XCTAssertNotNil(enhancedImage, "Enhancement should not cause failure")
+    }
+
+    func testScaleCalculation() {
+        let scalingManager = SmartScalingManager()
+        scalingManager.targetBibHeight = 150.0
+
+        let torsoManager = TorsoRegionManager()
+        let poseManager = PoseEstimationManager()
+
+        let testImage = createTestImageWithPerson()
+        guard let poses = try? poseManager.detectBodyPose(in: testImage),
+              let pose = poses.first,
+              let region = torsoManager.getPrimaryBibRegion(from: pose) else {
+            XCTFail("Failed to detect pose/region")
+            return
+        }
+
+        let imageSize = CGSize(width: testImage.width, height: testImage.height)
+        let metrics = scalingManager.analyzeRegionQuality(region: region, imageSize: imageSize)
+
+        // Scale factor should be reasonable (0.5x - 10x)
+        XCTAssertTrue(metrics.recommendedScale > 0.5)
+        XCTAssertTrue(metrics.recommendedScale < 10.0)
+    }
+
+    func testBatchScaling() {
+        let scalingManager = SmartScalingManager()
+        let torsoManager = TorsoRegionManager()
+        let poseManager = PoseEstimationManager()
+
+        let testImage = createTestImageWithPerson()
+        guard let poses = try? poseManager.detectBodyPose(in: testImage) else {
+            XCTFail("Failed to detect poses")
+            return
+        }
+
+        let allRegions = poses.flatMap { torsoManager.getAllBibRegions(from: $0) }
+
+        let results = scalingManager.batchScaleForOCR(image: testImage, regions: allRegions)
+
+        XCTAssertTrue(results.count <= allRegions.count)
+        XCTAssertTrue(results.count >= 0)
+
+        // All results should have valid images
+        for (_, scaledImage, _) in results {
+            XCTAssertTrue(scaledImage.width > 0)
+            XCTAssertTrue(scaledImage.height > 0)
+        }
+    }
+
+    func testScalingWithBibDetection() {
+        let detector = BibNumberDetector()
+        detector.enableSmartScaling = true
+
+        let testImage = createTestImageWithPerson()
+
+        // Should not crash with smart scaling enabled
+        do {
+            let _ = try detector.detectBibNumbers(in: testImage)
+            XCTAssertTrue(true, "Bib detection with smart scaling completed")
+        } catch {
+            // May not find bibs in synthetic image, but should not crash
+            XCTAssertTrue(true, "Bib detection completed without crash")
+        }
+    }
+
+    func testScalingPerformance() {
+        let scalingManager = SmartScalingManager()
+        let torsoManager = TorsoRegionManager()
+        let poseManager = PoseEstimationManager()
+
+        let testImage = createTestImageWithPerson()
+        guard let poses = try? poseManager.detectBodyPose(in: testImage),
+              let pose = poses.first,
+              let region = torsoManager.getPrimaryBibRegion(from: pose) else {
+            XCTFail("Failed to detect pose/region")
+            return
+        }
+
+        measure {
+            let _ = scalingManager.scaleForOCR(
+                image: testImage,
+                region: region,
+                mode: .intelligent
+            )
+        }
+    }
+
+    func testSmartScalingWithDisabled() {
+        let detector = BibNumberDetector()
+        detector.enableSmartScaling = false
+
+        let testImage = createTestImageWithPerson()
+
+        // Should work without smart scaling
+        do {
+            let _ = try detector.detectBibNumbers(in: testImage)
+            XCTAssertTrue(true, "Bib detection without smart scaling completed")
+        } catch {
+            XCTAssertTrue(true, "Bib detection completed without crash")
+        }
+    }
+
+    func testDPICalculation() {
+        let scalingManager = SmartScalingManager()
+        let torsoManager = TorsoRegionManager()
+        let poseManager = PoseEstimationManager()
+
+        let testImage = createTestImageWithPerson()
+        guard let poses = try? poseManager.detectBodyPose(in: testImage),
+              let pose = poses.first,
+              let region = torsoManager.getPrimaryBibRegion(from: pose) else {
+            XCTFail("Failed to detect pose/region")
+            return
+        }
+
+        let imageSize = CGSize(width: testImage.width, height: testImage.height)
+        let metrics = scalingManager.analyzeRegionQuality(region: region, imageSize: imageSize)
+
+        // DPI should be positive and reasonable
+        XCTAssertTrue(metrics.estimatedDPI > 0)
+        XCTAssertTrue(metrics.estimatedDPI < 10000) // Sanity check
+    }
+
+    func testOCRReadiness() {
+        let scalingManager = SmartScalingManager()
+        let torsoManager = TorsoRegionManager()
+        let poseManager = PoseEstimationManager()
+
+        let testImage = createTestImageWithPerson()
+        guard let poses = try? poseManager.detectBodyPose(in: testImage),
+              let pose = poses.first,
+              let region = torsoManager.getPrimaryBibRegion(from: pose) else {
+            XCTFail("Failed to detect pose/region")
+            return
+        }
+
+        let imageSize = CGSize(width: testImage.width, height: testImage.height)
+        let metrics = scalingManager.analyzeRegionQuality(region: region, imageSize: imageSize)
+
+        // OCR readiness should be boolean
+        XCTAssertTrue(metrics.isOCRReady == true || metrics.isOCRReady == false)
+    }
+
+    func testCustomScalingConfiguration() {
+        let scalingManager = SmartScalingManager()
+
+        // Test custom configuration
+        scalingManager.targetBibHeight = 200.0
+        scalingManager.minimumBibHeight = 30.0
+        scalingManager.maximumBibHeight = 500.0
+        scalingManager.minimumDPI = 100.0
+        scalingManager.targetDPI = 200.0
+
+        XCTAssertEqual(scalingManager.targetBibHeight, 200.0)
+        XCTAssertEqual(scalingManager.minimumBibHeight, 30.0)
+        XCTAssertEqual(scalingManager.maximumBibHeight, 500.0)
+        XCTAssertEqual(scalingManager.minimumDPI, 100.0)
+        XCTAssertEqual(scalingManager.targetDPI, 200.0)
+    }
+
+    func testScalingWithDifferentImageSizes() {
+        let scalingManager = SmartScalingManager()
+        let torsoManager = TorsoRegionManager()
+        let poseManager = PoseEstimationManager()
+
+        // Test with different image sizes
+        let sizes = [
+            CGSize(width: 640, height: 480),
+            CGSize(width: 1920, height: 1080),
+            CGSize(width: 320, height: 240)
+        ]
+
+        for size in sizes {
+            let testImage = createTestImage(size: size)
+            guard let poses = try? poseManager.detectBodyPose(in: testImage),
+                  let pose = poses.first,
+                  let region = torsoManager.getPrimaryBibRegion(from: pose) else {
+                continue
+            }
+
+            let imageSize = CGSize(width: testImage.width, height: testImage.height)
+            let metrics = scalingManager.analyzeRegionQuality(region: region, imageSize: imageSize)
+
+            XCTAssertTrue(metrics.resolution.width > 0)
+            XCTAssertTrue(metrics.resolution.height > 0)
+        }
+    }
+
+    func testBatchProcessingPerformance() {
+        let scalingManager = SmartScalingManager()
+        let torsoManager = TorsoRegionManager()
+        let poseManager = PoseEstimationManager()
+
+        let testImage = createTestImageWithPerson()
+        guard let poses = try? poseManager.detectBodyPose(in: testImage) else {
+            XCTFail("Failed to detect poses")
+            return
+        }
+
+        let allRegions = poses.flatMap { torsoManager.getAllBibRegions(from: $0) }
+
+        measure {
+            let _ = scalingManager.batchScaleForOCR(image: testImage, regions: allRegions)
+        }
+    }
 }

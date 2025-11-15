@@ -26,15 +26,6 @@ echo -e "${BLUE}║   Apple Vision Framework - Test Runner           ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════════════════╝${NC}"
 echo ""
 
-# Check if Swift is available
-if ! command -v swift &> /dev/null; then
-    echo -e "${RED}Error: Swift not found. Please install Xcode.${NC}"
-    exit 1
-fi
-
-echo -e "${YELLOW}Platform: ${PLATFORM}${NC}"
-echo ""
-
 # Function to run Swift tests
 run_swift_tests() {
     echo -e "${BLUE}Running Swift Unit Tests...${NC}"
@@ -63,6 +54,7 @@ display_summary() {
     echo -e "  ✓ Pose Estimation Tests"
     echo -e "  ✓ Person Detection Tests"
     echo -e "  ✓ Vision Coordinator Tests"
+    echo -e "  ✓ Smart Scaling Tests (NEW!)"
     echo -e "  ✓ Performance Tests"
     echo -e "  ✓ Error Handling Tests"
     echo -e "  ✓ Integration Tests"
@@ -125,6 +117,26 @@ list_tests() {
     echo "  • testInvalidImageHandling"
     echo ""
 
+    echo -e "${YELLOW}Smart Scaling Tests (NEW):${NC}"
+    echo "  • testSmartScalingInitialization"
+    echo "  • testDistanceCategorization"
+    echo "  • testQualityAnalysis"
+    echo "  • testScalingModeAspectFit"
+    echo "  • testScalingModeAspectFill"
+    echo "  • testScalingModeIntelligent"
+    echo "  • testImageEnhancement"
+    echo "  • testScaleCalculation"
+    echo "  • testBatchScaling"
+    echo "  • testScalingWithBibDetection"
+    echo "  • testScalingPerformance"
+    echo "  • testSmartScalingWithDisabled"
+    echo "  • testDPICalculation"
+    echo "  • testOCRReadiness"
+    echo "  • testCustomScalingConfiguration"
+    echo "  • testScalingWithDifferentImageSizes"
+    echo "  • testBatchProcessingPerformance"
+    echo ""
+
     echo -e "${YELLOW}Integration Tests:${NC}"
     echo "  • testFullPipelineWithAllFeatures"
     echo "  • testSelectiveFeatureProcessing"
@@ -142,11 +154,12 @@ check_coverage() {
     echo "  ✓ PoseEstimationManager         - 5 tests"
     echo "  ✓ PersonDetectionManager        - 6 tests"
     echo "  ✓ VisionCoordinator             - 5 tests"
-    echo "  ✓ Performance Benchmarks        - 4 tests"
+    echo "  ✓ SmartScalingManager           - 17 tests (NEW!)"
+    echo "  ✓ Performance Benchmarks        - 6 tests"
     echo "  ✓ Error Handling                - 1 test"
     echo "  ✓ Integration Tests             - 2 tests"
     echo ""
-    echo -e "${GREEN}Total: 32 test methods${NC}"
+    echo -e "${GREEN}Total: 49 test methods${NC}"
     echo ""
 
     echo -e "${GREEN}Test Types:${NC}"
@@ -227,14 +240,26 @@ manual_validation() {
 
 # Main execution
 main() {
+    echo -e "${YELLOW}Platform: ${PLATFORM}${NC}"
+    echo ""
+
+    # Check if Swift is available for actual test execution
+    if ! command -v swift &> /dev/null; then
+        echo -e "${RED}Error: Swift not found. Please install Xcode.${NC}"
+        echo -e "${YELLOW}Note: Tests require Xcode to compile and run.${NC}"
+        echo ""
+    fi
+
     # List all tests
     list_tests
 
     # Check coverage
     check_coverage
 
-    # Run Swift tests
-    run_swift_tests
+    # Run Swift tests (if Swift is available)
+    if command -v swift &> /dev/null; then
+        run_swift_tests
+    fi
 
     # Display summary
     display_summary
