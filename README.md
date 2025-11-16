@@ -74,11 +74,40 @@ A comprehensive implementation using Apple's Vision framework for:
   - Small distant bibs: 45% → 78% accuracy (+73%)
   - Processing time: 62% faster for large, 47% faster for small
 
-### Complete Pipeline Feedback Loop (NEW!)
+### Difficulty-Adaptive Feedback Loop (NEW!)
+- **AUTO mode with intelligent difficulty detection** - Analyzes image quality and adapts all parameters automatically
+- **4 difficulty levels: Light, Medium, Hard, Extreme** - Each with fine-tuned parameters
+- **Comprehensive image analysis**
+  - Brightness, contrast, sharpness, noise level
+  - Person size, count, confidence
+  - Motion blur, backlighting, occlusion, reflections detection
+  - Overall quality score (0-1)
+- **Fine-tuned parameters per difficulty level**
+
+| Parameter | Light (✅) | Medium (⚠️) | Hard (🔴) | Extreme (💀) |
+|-----------|-----------|------------|----------|--------------|
+| Iterations | 1 | 2 | 3 | 4 |
+| Min Confidence | 0.60 | 0.50 | 0.40 | 0.35 |
+| Upscaling | 1.0x | 1.5x | 3.0x | 6.0x |
+| Contrast Boost | 1.2x | 1.4x | 1.8x | 2.5x |
+| Sharpness | 0.5 | 0.9 | 1.3 | 1.8 |
+| OCR Passes | 3 | 4 | 5 | 5 |
+| Denoising | Off | On | On | On |
+| Binarization | Off | Off | On | On |
+| Time Budget | 1.0s | 2.5s | 5.0s | 10.0s |
+| Strategies | 1 | 3 | 5 | 6 (all) |
+
+- **Adaptive rescue strategy ordering** - Most effective strategies first based on difficulty
+- **Full pipeline restart** - All stages benefit from enhancement (Person → Pose → Torso → OCR)
+- **Manual override option** - Force specific difficulty level if needed
+- **Real-world scenario support**
+  - Light: Finish line photos (close, bright, clear)
+  - Medium: Mid-race candids (moderate distance, varying light)
+  - Hard: Start line crowds (distant, cluttered, backlighting)
+  - Extreme: Trail races (motion blur, poor light, occlusion)
+
+### Complete Pipeline Feedback Loop
 - **Full pipeline restart on failure** - When bib is not recognized, enhance image and restart ENTIRE pipeline
-- **Multi-iteration rescue system**
-  - Iteration 1: Standard pipeline (Person → Pose → Torso → OCR) on original image
-  - Iteration 2+: Apply rescue enhancement → Run FULL PIPELINE AGAIN on enhanced image
 - **6 rescue enhancement strategies**
   - Extreme contrast (4.0x + binarization)
   - Adaptive threshold (multiple threshold levels)
@@ -86,15 +115,9 @@ A comprehensive implementation using Apple's Vision framework for:
   - Color inversion (handles white-on-black text)
   - Heavy denoising (median filter + morphology)
   - Combined rescue (all techniques together)
-- **Why full pipeline restart is better**
-  - Enhanced image → Better person detection (clearer boundaries)
-  - Better person box → Better pose estimation (accurate joints)
-  - Better pose → Better torso calculation (precise regions)
-  - Better torso → Better OCR focus area
-  - Enhanced image → Better OCR results
 - **Expected improvements**: +20-30% additional successful detections
-- **Processing time**: 500-900ms with rescue (only when needed)
-- **Best for**: Very small/distant people, low contrast, motion blur, partial occlusion
+- **Processing time**: Adaptive (1-10s depending on difficulty)
+- **Best for**: Automatically handling mixed-difficulty race photos
 
 ### Comprehensive Visualization
 - **Person bounding boxes** with customizable colors and line widths
@@ -150,7 +173,17 @@ See the example implementations in:
   - Pattern validation & filtering
   - Expected: 85%→98% accuracy for large bibs, 62% faster processing
 
-**Complete Pipeline Feedback Loop (NEW!):**
+**Difficulty-Adaptive Feedback Loop (NEW!):**
+- `ImageDifficultyAnalyzer.swift` - Intelligent image quality and difficulty analysis
+- `DifficultyAdaptiveFeedbackLoop.swift` - AUTO mode with difficulty-adaptive parameters
+- `DifficultyAdaptiveExamples.swift` - 8 comprehensive examples (AUTO, manual, batch, scenarios)
+  - AUTO mode: Detects difficulty and adapts all parameters automatically
+  - 4 difficulty levels: Light, Medium, Hard, Extreme (each with fine-tuned parameters)
+  - Image quality metrics: brightness, contrast, sharpness, noise, person size, challenges
+  - Real-world scenarios: finish line, mid-race, start crowd, trail race
+  - Parameter fine-tuning guide with complete comparison table
+
+**Complete Pipeline Feedback Loop:**
 - `CompletePipelineFeedbackLoop.swift` - Full pipeline restart on failed recognition
 - `FeedbackLoopOCR.swift` - OCR-level feedback loop (alternative approach)
 - `FeedbackLoopExample.swift` - 7 feedback loop examples
