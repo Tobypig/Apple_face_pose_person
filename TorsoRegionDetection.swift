@@ -20,10 +20,11 @@ import UIKit
 
 /// Torso region zones for bib number detection
 enum TorsoZone: String {
-    case upperChest     // Standard bib placement (shoulders to mid-torso)
-    case midTorso       // Lower chest placement (mid-torso to upper abdomen)
-    case lowerTorso     // Lower abdomen/waist placement (abdomen to hips)
-    case fullTorso      // Entire torso region (shoulders to hips)
+    case upperChest        // Standard bib placement (shoulders to mid-torso)
+    case midTorso          // Lower chest placement (mid-torso to upper abdomen)
+    case lowerTorso        // Lower abdomen/waist placement (abdomen to hips)
+    case extendedLowerTorso // Extended lower region (hips to below hips) - for low bib placement
+    case fullTorso         // Entire torso region (shoulders to hips)
 }
 
 /// Bib detection region with coordinates and metadata
@@ -79,16 +80,22 @@ class TorsoRegionManager {
     /// Minimum joint confidence required (default: 0.3)
     var minJointConfidence: Float = 0.3
 
+    /// Enable extended lower torso region (for bibs placed at/below hip level)
+    var enableExtendedLowerTorso: Bool = true
+
+    /// Extension below hip level as factor of torso height (default: 0.3 = 30% of torso height below hips)
+    var lowerExtensionFactor: CGFloat = 0.3
+
     // MARK: - Public Methods
 
     /// Extract torso regions from pose estimation results
     /// - Parameters:
     ///   - poses: Array of pose estimation results
-    ///   - zones: Which zones to extract (default: all)
+    ///   - zones: Which zones to extract (default: all including extended lower torso)
     /// - Returns: Array of bib detection regions
     func extractTorsoRegions(
         from poses: [PoseEstimationResult],
-        zones: [TorsoZone] = [.upperChest, .midTorso, .lowerTorso]
+        zones: [TorsoZone] = [.upperChest, .midTorso, .lowerTorso, .extendedLowerTorso]
     ) -> [BibDetectionRegion] {
 
         var regions: [BibDetectionRegion] = []
@@ -147,8 +154,11 @@ class TorsoRegionManager {
 
         var regions: [BibDetectionRegion] = []
 
-        // Order: upper chest (most common) -> mid torso -> lower torso
-        let zonePriority: [TorsoZone] = [.upperChest, .midTorso, .lowerTorso]
+        // Order: upper chest (most common) -> mid torso -> lower torso -> extended lower (fallback)
+        var zonePriority: [TorsoZone] = [.upperChest, .midTorso, .lowerTorso]
+        if enableExtendedLowerTorso {
+            zonePriority.append(.extendedLowerTorso)
+        }
 
         for zone in zonePriority {
             if let region = calculateBibRegion(for: zone, joints: joints, personID: pose.personID) {
@@ -187,6 +197,8 @@ class TorsoRegionManager {
             return calculateMidTorsoRegion(joints: joints, personID: personID)
         case .lowerTorso:
             return calculateLowerTorsoRegion(joints: joints, personID: personID)
+        case .extendedLowerTorso:
+            return calculateExtendedLowerTorsoRegion(joints: joints, personID: personID)
         case .fullTorso:
             return calculateFullTorsoRegion(joints: joints, personID: personID)
         }
@@ -353,6 +365,64 @@ class TorsoRegionManager {
         )
     }
 
+    /// Extended lower torso region: Hips to below hips (VERY LOW BIB PLACEMENT)
+    /// Fallback for unusual cases where bibs are worn at or below hip level
+    /// Extends below hip by configurable factor (default 30% of torso height)
+    private func calculateExtendedLowerTorsoRegion(joints: TorsoJoints, personID: Int) -> BibDetectionRegion? {
+        guard enableExtendedLowerTorso else {
+            return nil
+        }
+
+        guard let leftShoulder = joints.leftShoulder,
+              let rightShoulder = joints.rightShoulder,
+              let leftHip = joints.leftHip,
+              let rightHip = joints.rightHip else {
+            return nil
+        }
+
+        let shoulderMidX = (leftShoulder.position.x + rightShoulder.position.x) / 2
+        let shoulderMidY = (leftShoulder.position.y + rightShoulder.position.y) / 2
+        let hipMidX = (leftHip.position.x + rightHip.position.x) / 2
+        let hipMidY = (leftHip.position.y + rightHip.position.y) / 2
+
+        let torsoHeight = abs(shoulderMidY - hipMidY)
+
+        // Extended region: From hip level down to (hip - extension)
+        // Extension factor = 0.3 means 30% of torso height below hips
+        let extensionHeight = torsoHeight * lowerExtensionFactor
+
+        let regionTop = hipMidY
+        let regionBottom = hipMidY - extensionHeight
+        let regionHeight = abs(regionTop - regionBottom)
+
+        // Width: hip width + expansion (slightly wider for lower placement)
+        let hipWidth = abs(rightHip.position.x - leftHip.position.x)
+        let regionWidth = hipWidth * widthExpansionFactor * 1.1  // Slightly wider for lower region
+
+        let regionCenterX = hipMidX
+
+        let bbox = CGRect(
+            x: regionCenterX - regionWidth / 2,
+            y: regionBottom,
+            width: regionWidth,
+            height: regionHeight * heightExpansionFactor
+        )
+
+        let centerPoint = CGPoint(
+            x: regionCenterX,
+            y: (regionTop + regionBottom) / 2
+        )
+
+        return BibDetectionRegion(
+            zone: .extendedLowerTorso,
+            boundingBox: bbox,
+            confidence: joints.averageConfidence * 0.8,  // Lower confidence for this unusual placement
+            personID: personID,
+            centerPoint: centerPoint,
+            joints: joints
+        )
+    }
+
     /// Full torso region: Entire torso from shoulders to hips
     /// Use when bib placement is unknown
     private func calculateFullTorsoRegion(joints: TorsoJoints, personID: Int) -> BibDetectionRegion? {
@@ -455,6 +525,8 @@ extension TorsoRegionManager {
             return CGColor(red: 1.0, green: 1.0, blue: 0.0, alpha: 0.5) // Yellow
         case .lowerTorso:
             return CGColor(red: 1.0, green: 0.5, blue: 0.0, alpha: 0.5) // Orange
+        case .extendedLowerTorso:
+            return CGColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 0.5) // Red (fallback region)
         case .fullTorso:
             return CGColor(red: 0.0, green: 0.5, blue: 1.0, alpha: 0.3) // Blue
         }
@@ -469,6 +541,8 @@ extension TorsoRegionManager {
             return "Mid Torso"
         case .lowerTorso:
             return "Lower Torso"
+        case .extendedLowerTorso:
+            return "Extended Lower (Below Hips)"
         case .fullTorso:
             return "Full Torso"
         }

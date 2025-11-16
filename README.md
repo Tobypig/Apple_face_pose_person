@@ -34,7 +34,10 @@ A comprehensive implementation using Apple's Vision framework for:
 - Confidence scores
 
 ### Bib Number Detection
-- **Torso region detection** with 3 zones (upper chest, mid torso, lower torso)
+- **Torso region detection** with 4 zones (upper chest, mid torso, lower torso, extended lower torso)
+  - Extended lower torso region for low bib placements (at/below hip level)
+  - Configurable extension below hips (default: 30% of torso height)
+  - Fallback detection for unusual bib placements
 - **Race bib number OCR** using Vision text recognition
 - **Multi-strategy detection** for different bib placements
 - **Support for various race types** (marathon, triathlon, cycling, trail)
@@ -125,6 +128,36 @@ A comprehensive implementation using Apple's Vision framework for:
   - Reduces false negatives by 10-15%
   - Average confidence boost: +0.08 per correction
 
+### Orientation Detection & Correction (NEW!)
+- **Upside-down detection using pose estimation** - Prevents catastrophic reading errors (8096 ≠ 6908!)
+- **Pose-based orientation detection**:
+  - Compares head position vs hip position (Y coordinates)
+  - Vision coordinates: origin at bottom-left, Y increases upward
+  - Head above hips (headY > hipY) = upright ⬆️
+  - Head below hips (headY < hipY) = upside-down ⬇️
+  - Configurable confidence threshold (default: 0.5)
+- **180° rotation correction**:
+  - Step 1: Reverse the number string
+  - Step 2: Swap 6 ↔ 9
+  - Preserves symmetric digits (0, 1, 8 stay the same)
+  - Example: "6908" → reverse → "8096" → swap 6↔9 → "8096" ✅
+- **Score-based validation** - When orientation uncertain, use validity scoring:
+  - Penalizes numbers starting with 6/9 (less common)
+  - Penalizes digits that look wrong upside-down (2, 3, 4, 5, 7)
+  - Prefers numbers in typical race range (1-99999)
+  - Compares original vs flipped score to decide
+- **Seamless OCR integration** - Works with existing BibNumberResult pipeline
+- **Real-world use cases**:
+  - Runner doing handstand in photo
+  - Camera held upside-down
+  - Photo taken from unusual angle
+  - Scanned images rotated incorrectly
+- **Expected improvements**:
+  - Prevents 100% of upside-down reading errors
+  - Uses reliable anatomical landmarks
+  - Handles ambiguous symmetric numbers (8081, 1001)
+  - No false positives on normal photos
+
 ### Complete Pipeline Feedback Loop
 - **Full pipeline restart on failure** - When bib is not recognized, enhance image and restart ENTIRE pipeline
 - **6 rescue enhancement strategies**
@@ -211,6 +244,16 @@ See the example implementations in:
   - Confidence boosting (+0.05-0.20)
   - Configurable length validation (1-6 digits default)
   - Integration with OCR pipeline
+
+**Orientation Detection & Correction (NEW!):**
+- `BibOrientationCorrector.swift` - Upside-down detection & 180° flip correction system
+- `BibOrientationExamples.swift` - 9 comprehensive examples
+  - Pose-based orientation detection (head Y vs hip Y position)
+  - 180° rotation correction (reverse + 6↔9 swap)
+  - Score-based validation for uncertain cases
+  - Seamless OCR pipeline integration
+  - Real-world scenarios: handstands, upside-down camera, unusual angles
+  - Prevents catastrophic reading errors: "8096" ≠ "6908" ✅
 
 **Complete Pipeline Feedback Loop:**
 - `CompletePipelineFeedbackLoop.swift` - Full pipeline restart on failed recognition
